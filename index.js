@@ -25,9 +25,28 @@ const client = new MongoClient(uri, {
 
 async function run() {
   try {
-    // Connect the client to the server	(optional starting in v4.7)
     await client.connect();
-    // Send a ping to confirm a successful connection
+
+    const db = client.db("vento-ai");
+    const latestCollection = db.collection("latest_models");
+    const modelCollection = db.collection("models");
+
+    app.get("/latest_models", async (req, res) => {
+      const result = await latestCollection.find().toArray();
+
+      res.send(result);
+    });
+
+    app.post("/models", async (req, res) => {
+      const data = req.body;
+      console.log(data);
+      const result = await modelCollection.insertOne(data);
+      res.send({
+        success: true,
+        result,
+      });
+    });
+
     await client.db("admin").command({ ping: 1 });
     console.log(
       "Pinged your deployment. You are successfully connected to MongoDB!"
