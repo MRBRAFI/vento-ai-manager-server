@@ -37,6 +37,33 @@ async function run() {
       res.send(result);
     });
 
+    app.get("/models", async (req, res) => {
+      try {
+        const search = req.query.search || "";
+        const framework = req.query.framework || "All";
+
+        const query = {};
+
+        if (search) {
+          query.name = { $regex: search, $options: "i" };
+        }
+
+        if (framework !== "All") {
+          query.frameworl = framework;
+        }
+
+        const result = await modelCollection
+          .find(query)
+          .sort({ createdAt: -1 })
+          .toArray();
+
+        res.send(result);
+      } catch (error) {
+        console.error("Error fetching models:", error);
+        res.status(500).send({ message: "Error fetching models" });
+      }
+    });
+
     app.post("/models", async (req, res) => {
       const data = req.body;
       console.log(data);
