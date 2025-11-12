@@ -1,7 +1,7 @@
 require("dotenv").config();
 const express = require("express");
 const cors = require("cors");
-const { MongoClient, ServerApiVersion } = require("mongodb");
+const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
 const app = express();
 const port = process.env.PORT || 3000;
 // middlewere
@@ -64,6 +64,19 @@ async function run() {
       }
     });
 
+    app.get("/models/:id", async (req, res) => {
+      const { id } = req.params;
+
+      const objectId = new ObjectId(id);
+
+      const result = await modelCollection.findOne({ _id: objectId });
+
+      res.send({
+        success: true,
+        result,
+      });
+    });
+
     app.post("/models", async (req, res) => {
       const data = req.body;
       console.log(data);
@@ -72,6 +85,36 @@ async function run() {
         success: true,
         result,
       });
+    });
+
+    // Update request
+
+    app.put("/models/:id", async (req, res) => {
+      const { id } = req.params;
+      const data = req.body;
+      const objectId = new ObjectId(id);
+
+      const filter = { _id: objectId };
+      const update = {
+        $set: data,
+      };
+
+      const result = await modelCollection.updateOne(filter, update);
+
+      res.send({
+        success: true,
+        result,
+      });
+    });
+
+    app.patch("/models/:id", async (req, res) => {
+      const { id } = req.params;
+      const result = await modelCollection.findOneAndUpdate(
+        { _id: new ObjectId(id) },
+        { $inc: { purchased: 1 } },
+        { returnDocument: "after" }
+      );
+      res.send(result.value);
     });
 
     await client.db("admin").command({ ping: 1 });
