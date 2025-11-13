@@ -30,6 +30,7 @@ async function run() {
     const db = client.db("vento-ai");
     const latestCollection = db.collection("latest_models");
     const modelCollection = db.collection("models");
+    const purchasedCollection = db.collection("purchased");
 
     app.get("/latest_models", async (req, res) => {
       const result = await latestCollection.find().toArray();
@@ -64,6 +65,12 @@ async function run() {
       }
     });
 
+    app.get("/purchased", async (req, res) => {
+      const result = await purchasedCollection.find().toArray();
+
+      res.send(result);
+    });
+
     app.get("/models/:id", async (req, res) => {
       const { id } = req.params;
 
@@ -79,12 +86,43 @@ async function run() {
 
     app.post("/models", async (req, res) => {
       const data = req.body;
-      console.log(data);
       const result = await modelCollection.insertOne(data);
       res.send({
         success: true,
         result,
       });
+    });
+
+    app.post("/purchased", async (req, res) => {
+      try {
+        const data = req.body;
+        console.log("Purchase data:", data);
+
+        const modelFilter = { _id: new ObjectId(data.modelId) };
+        const modelUpdate = { $inc: { purchased: 1 } };
+        const updatedModel = await modelCollection.findOneAndUpdate(
+          modelFilter,
+          modelUpdate,
+          { returnDocument: "after" }
+        );
+
+        await purchasedCollection.insertOne({
+          ...data,
+          purchasedAt: new Date(),
+          purchased: 1,
+        });
+
+        res.send({
+          success: true,
+          message: "Purchase recorded successfully",
+          model: updatedModel.value,
+        });
+      } catch (err) {
+        console.error("Error in /purchased:", err);
+        res
+          .status(500)
+          .send({ success: false, message: "Failed to record purchase" });
+      }
     });
 
     // Update request
@@ -106,15 +144,15 @@ async function run() {
         result,
       });
     });
+    // Deleting section
 
-    app.patch("/models/:id", async (req, res) => {
+    app.delete("/models/:id", async (req, res) => {
       const { id } = req.params;
-      const result = await modelCollection.findOneAndUpdate(
-        { _id: new ObjectId(id) },
-        { $inc: { purchased: 1 } },
-        { returnDocument: "after" }
-      );
-      res.send(result.value);
+      const objectId = new ObjectId(id);
+      const filter = { _id: objectId };
+      const result = await modelCollection.deleteOne(filter);
+
+      res.send(result);
     });
 
     await client.db("admin").command({ ping: 1 });
